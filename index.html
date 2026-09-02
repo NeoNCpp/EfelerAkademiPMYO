@@ -599,15 +599,6 @@ async function loadStudents(){
 }
 
 // ---------- LOGIN ----------
-function getDeviceId(){
-  let id = localStorage.getItem('ea_device_id');
-  if(!id){
-    id = (crypto.randomUUID ? crypto.randomUUID() : 'dev-' + Date.now() + '-' + Math.random().toString(36).slice(2));
-    localStorage.setItem('ea_device_id', id);
-  }
-  return id;
-}
-
 async function doLogin(){
   const user = document.getElementById('loginUser').value.trim();
   const pass = document.getElementById('loginPass').value;
@@ -623,17 +614,6 @@ async function doLogin(){
   const match = students.find(s => s.username.toLowerCase() === user.toLowerCase() && s.password === pass);
   if(!match){
     errEl.textContent = 'Kullanıcı adı veya şifre hatalı.';
-    errEl.style.display = 'block';
-    btn.textContent = originalBtnText; btn.style.pointerEvents = 'auto';
-    return;
-  }
-
-  const currentDeviceId = getDeviceId();
-  if(!match.lockedDeviceId){
-    match.lockedDeviceId = currentDeviceId;
-    await saveDB();
-  } else if(match.lockedDeviceId !== currentDeviceId){
-    errEl.textContent = 'Bu hesap başka bir cihaza kayıtlı. Yönetici ile iletişime geç.';
     errEl.style.display = 'block';
     btn.textContent = originalBtnText; btn.style.pointerEvents = 'auto';
     return;
@@ -872,30 +852,15 @@ function renderAdminStudentsList(){
   }
   let html = '';
   students.forEach((s, i)=>{
-    const ipInfo = s.lockedDeviceId
-      ? `Cihaz: kayıtlı 🔒`
-      : 'Cihaz: henüz kayıtlı değil';
     html += `<div class="list-item">
       <div style="flex:1">
         <div class="qt">${escapeHtml(s.name || s.username)}</div>
         <div class="qm">Kullanıcı: ${escapeHtml(s.username)} · Şifre: ${escapeHtml(s.password)}</div>
-        <div class="qm">${ipInfo}</div>
       </div>
-      <div style="display:flex; flex-direction:column; gap:6px;">
-        ${s.lockedDeviceId ? `<button class="btn-sm btn-outline" style="white-space:nowrap;" onclick="resetStudentIp(${i})">Cihazı Sıfırla</button>` : ''}
-        <button class="del-x" onclick="deleteStudent(${i})">✕</button>
-      </div>
+      <button class="del-x" onclick="deleteStudent(${i})">✕</button>
     </div>`;
   });
   document.getElementById('asList').innerHTML = html;
-}
-
-async function resetStudentIp(i){
-  db.students[i].lockedDeviceId = null;
-  await saveDB();
-  students = db.students;
-  renderAdminStudentsList();
-  toast('Cihaz kilidi kaldırıldı');
 }
 
 async function addStudent(){
