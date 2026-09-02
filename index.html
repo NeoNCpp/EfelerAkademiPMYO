@@ -255,6 +255,27 @@
 
   ::-webkit-scrollbar{ width:0; }
   h4.section-title{ font-size:12px; color:var(--gold-light); text-transform:uppercase; letter-spacing:.6px; margin:20px 0 4px; }
+
+  .modal-overlay{
+    display:none; position:fixed; inset:0; background:rgba(0,0,0,.75); z-index:200;
+    align-items:center; justify-content:center; padding:20px;
+  }
+  .modal-overlay.show{ display:flex; }
+  .modal-box{
+    width:100%; max-width:420px; max-height:82vh; overflow-y:auto;
+    background:linear-gradient(165deg, #1a1400 0%, #2b2005 50%, #1a1400 100%);
+    border:1px solid rgba(212,175,55,.5); border-radius:18px; padding:22px;
+    box-shadow:0 12px 40px rgba(0,0,0,.6), 0 0 24px rgba(212,175,55,.15);
+  }
+  .modal-box .field label{ color:#ffffff; }
+  .modal-box .field input, .modal-box .field textarea, .modal-box .field select{
+    background:rgba(212,175,55,.10); border:1px solid rgba(212,175,55,.45); color:#ffffff;
+  }
+  .edit-btn{
+    width:28px; height:28px; border-radius:8px; background:rgba(212,175,55,.16); color:var(--gold-light);
+    border:1px solid rgba(212,175,55,.4); font-size:13px; flex-shrink:0; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+  }
 </style>
 </head>
 <body>
@@ -463,6 +484,7 @@
       <div class="field"><label>Soru</label><textarea id="acQuestion" placeholder="Soru metni..."></textarea></div>
       <div class="field"><label>Cevap</label><textarea id="acAnswer" placeholder="Cevap metni..."></textarea></div>
       <button class="btn btn-gold" style="margin-top:14px" onclick="addClassicalQuestion()">Soruyu Ekle</button>
+      <button class="btn btn-outline" style="margin-top:10px" id="bulkImportBtn" onclick="bulkImportPomem33()">33. Dönem POMEM Sorularını Toplu Ekle (82 soru)</button>
       <h4 class="section-title">Mevcut Klasik Sorular (<span id="acCount">0</span>)</h4>
       <div id="acList"></div>
     </div>
@@ -477,6 +499,18 @@
 
   <div class="gear" onclick="goto('view-admin-login')">⚙</div>
   <div class="toast" id="toast"></div>
+
+  <!-- EDIT MODAL -->
+  <div class="modal-overlay" id="editModalOverlay" onclick="if(event.target===this)closeEditModal()">
+    <div class="modal-box">
+      <h3 id="editModalTitle" style="font-size:16px; margin-bottom:14px; color:var(--gold-light);">Soruyu Düzenle</h3>
+      <div id="editModalBody"></div>
+      <div class="btn-block-row">
+        <button class="btn btn-outline" onclick="closeEditModal()">Vazgeç</button>
+        <button class="btn btn-gold" onclick="saveEditModal()">Kaydet</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -891,6 +925,74 @@ async function deleteStudent(i){
   toast('Öğrenci silindi');
 }
 
+let editContext = { type:null, index:null };
+
+function openEditTestModal(i){
+  editContext = { type:'test', index:i };
+  const q = testQuestions[i];
+  const letters = ['A','B','C','D','E'];
+  let html = `<div class="field"><label>Soru</label><textarea id="editQuestion">${escapeHtml(q.question)}</textarea></div>`;
+  letters.forEach((L, idx)=>{
+    html += `<div class="field"><label>${L} Şıkkı</label><input id="editOpt${idx}" type="text" value="${escapeHtml(q.options[idx]||'')}"></div>`;
+  });
+  html += `<div class="field"><label>Doğru Şık</label><select id="editCorrect">`;
+  letters.forEach((L, idx)=>{
+    html += `<option value="${idx}" ${idx===q.correctIndex?'selected':''}>${L}</option>`;
+  });
+  html += `</select></div>`;
+  document.getElementById('editModalTitle').textContent = 'Test Sorusunu Düzenle';
+  document.getElementById('editModalBody').innerHTML = html;
+  document.getElementById('editModalOverlay').classList.add('show');
+}
+
+function openEditClassicalModal(i){
+  editContext = { type:'classical', index:i };
+  const q = classicalQuestions[i];
+  const html = `
+    <div class="field"><label>Soru</label><textarea id="editQuestion">${escapeHtml(q.question)}</textarea></div>
+    <div class="field"><label>Cevap</label><textarea id="editAnswer" style="min-height:120px;">${escapeHtml(q.answer)}</textarea></div>
+  `;
+  document.getElementById('editModalTitle').textContent = 'Klasik Soruyu Düzenle';
+  document.getElementById('editModalBody').innerHTML = html;
+  document.getElementById('editModalOverlay').classList.add('show');
+}
+
+function closeEditModal(){
+  document.getElementById('editModalOverlay').classList.remove('show');
+  editContext = { type:null, index:null };
+}
+
+async function saveEditModal(){
+  if(editContext.type === 'test'){
+    const question = document.getElementById('editQuestion').value.trim();
+    const opts = [0,1,2,3,4].map(idx => document.getElementById('editOpt'+idx).value.trim());
+    const correctIndex = parseInt(document.getElementById('editCorrect').value, 10);
+    if(!question || !opts[0] || !opts[1]){ toast('Soru ve en az A, B şıkları gerekli'); return; }
+    await loadDB(true);
+    db.testQuestions[editContext.index] = { question, options: opts, correctIndex };
+    const ok = await saveDB();
+    if(ok){
+      testQuestions = db.testQuestions;
+      renderAdminTestList();
+      toast('Soru güncellendi');
+      closeEditModal();
+    }
+  } else if(editContext.type === 'classical'){
+    const question = document.getElementById('editQuestion').value.trim();
+    const answer = document.getElementById('editAnswer').value.trim();
+    if(!question || !answer){ toast('Soru ve cevap gerekli'); return; }
+    await loadDB(true);
+    db.classicalQuestions[editContext.index] = { question, answer };
+    const ok = await saveDB();
+    if(ok){
+      classicalQuestions = db.classicalQuestions;
+      renderAdminClassicalList();
+      toast('Soru güncellendi');
+      closeEditModal();
+    }
+  }
+}
+
 function renderAdminTestList(){
   document.getElementById('atCount').textContent = testQuestions.length;
   const letters = ['A','B','C','D','E'];
@@ -905,7 +1007,10 @@ function renderAdminTestList(){
         <div class="qt">${i+1}. ${escapeHtml(q.question)}</div>
         <div class="qm">Doğru: ${letters[q.correctIndex]}) ${escapeHtml(q.options[q.correctIndex]||'')}</div>
       </div>
-      <button class="del-x" onclick="deleteTestQuestion(${i})">✕</button>
+      <div style="display:flex; flex-direction:column; gap:6px;">
+        <button class="edit-btn" onclick="openEditTestModal(${i})">✎</button>
+        <button class="del-x" onclick="deleteTestQuestion(${i})">✕</button>
+      </div>
     </div>`;
   });
   document.getElementById('atList').innerHTML = html;
@@ -924,7 +1029,10 @@ function renderAdminClassicalList(){
         <div class="qt">${i+1}. ${escapeHtml(q.question)}</div>
         <div class="qm">${escapeHtml((q.answer||'').slice(0,60))}${(q.answer||'').length>60?'...':''}</div>
       </div>
-      <button class="del-x" onclick="deleteClassicalQuestion(${i})">✕</button>
+      <div style="display:flex; flex-direction:column; gap:6px;">
+        <button class="edit-btn" onclick="openEditClassicalModal(${i})">✎</button>
+        <button class="del-x" onclick="deleteClassicalQuestion(${i})">✕</button>
+      </div>
     </div>`;
   });
   document.getElementById('acList').innerHTML = html;
@@ -981,6 +1089,115 @@ async function deleteTestQuestion(i){
   testQuestions = db.testQuestions;
   renderAdminTestList();
   toast('Soru silindi');
+}
+
+async function bulkImportPomem33(){
+  const btn = document.getElementById('bulkImportBtn');
+  btn.textContent = 'Ekleniyor...'; btn.style.pointerEvents = 'none';
+  const items = [
+    {q:`Polis vatandaşa nasıl davranmalıdır?`, a:`Polis, vatandaşa karşı saygılı, tarafsız, sabırlı ve güler yüzlü davranmalıdır. Görevini yerine getirirken insan haklarına ve hukuka uygun hareket etmeli, vatandaşın güvenini kazanmalıdır. Polis, kamu düzenini sağlarken vatandaşla sağlıklı iletişim kurmalıdır.`},
+    {q:`Osmanlı Devleti'nde veya Türk devletlerinde töre kavramı nedir? Düşüncelerinizi açıklayınız.`, a:`Töre, eski Türk devletlerinde toplum düzenini sağlayan yazılı olmayan hukuk kuralları ve geleneklerin bütünüdür. Devlet yönetiminde, adaletin sağlanmasında ve toplumsal hayatın düzenlenmesinde önemli rol oynamıştır. Türklerde hükümdarlar bile töreye uymak zorundaydı. Bu durum devlet yönetiminde keyfiliğin önüne geçilmesine katkı sağlamıştır. Töre; adalet, eşitlik, dürüstlük, sorumluluk ve devlet otoritesine bağlılık gibi değerleri içerirdi. Osmanlı Devleti'nde de töre anlayışının etkileri görülmüş, devlet yönetiminde örf ve gelenekler önemli bir yer tutmuştur. Ancak Osmanlı'da İslam hukuku da yönetimde önemli bir kaynak olmuştur. Bana göre töre, toplumun ortak değerlerini koruyan ve sosyal düzeni destekleyen önemli bir kavramdır. Ancak günümüzde tüm kuralların hukuk devleti ve anayasal düzen çerçevesinde uygulanması gerekir.`},
+    {q:`Türkiye'de neden çok deprem olmaktadır?`, a:`Türkiye, Alp-Himalaya deprem kuşağı üzerinde yer almaktadır. Kuzey Anadolu Fay Hattı, Doğu Anadolu Fay Hattı ve Batı Anadolu'daki fay sistemleri nedeniyle aktif tektonik hareketler yaşanmaktadır. Bu nedenle ülkemizde deprem riski yüksektir.`},
+    {q:`Polis memurlarının vatandaşlarla iletişimi nasıl olmalıdır?`, a:`Polis memurları vatandaşlarla iletişim kurarken açık, anlaşılır, saygılı ve çözüm odaklı olmalıdır. Vatandaşın sorununu dinlemeli, empati kurmalı ve görevini hukuk çerçevesinde yerine getirmelidir. Etkili iletişim, polis-vatandaş güvenini güçlendirir.`},
+    {q:`Mustafa Kemal Atatürk'ün ilk katıldığı savaş hangisidir?`, a:`Mustafa Kemal Atatürk'ün ilk katıldığı savaş, 1911 yılında gönüllü olarak görev aldığı Trablusgarp Savaşı'dır. Bu savaşta İtalyanlara karşı mücadele etmiştir.`},
+    {q:`Türkiye bir kıta ülkesi midir?`, a:`Türkiye bir kıta ülkesi değildir ancak iki kıta üzerinde toprakları bulunan bir ülkedir. Topraklarının büyük bölümü Asya kıtasındaki Anadolu'da, küçük bir bölümü ise Avrupa kıtasındaki Trakya'da yer alır. Bu nedenle Türkiye'ye kıtalararası geçiş sağlayan bir ülke denir.`},
+    {q:`Polis Akademisinin logosunun anlamı nedir?`, a:`Polis Akademisi logosundaki unsurlar; bilgiyi, hukuku, adaleti ve güvenliği temsil eder. Logo genel olarak Türk polis teşkilatının eğitim, disiplin, devlet otoritesi ve hukukun üstünlüğüne verdiği önemi simgeler.`},
+    {q:`Coğrafi keşifler sırasında diğer toplumlar nasıl etkilenmiştir?`, a:`Coğrafi keşifler sonucunda yeni kıtalar ve ticaret yolları bulunmuştur. Avrupa devletleri ekonomik açıdan güçlenirken, keşfedilen bölgelerde yaşayan toplumlar sömürgeciliğe maruz kalmıştır. Yerli halkların yaşam biçimleri değişmiş, kültürel ve ekonomik yapıları önemli ölçüde etkilenmiştir.`},
+    {q:`Organizasyon nedir? Açıklayınız.`, a:`Organizasyon, belirli bir amacı gerçekleştirmek için insanların, görevlerin ve kaynakların planlı şekilde bir araya getirilmesidir. Organizasyon sayesinde görev dağılımı yapılır, iş birliği sağlanır ve hedeflere daha etkili şekilde ulaşılır.`},
+    {q:`Dünya mirası nedir?`, a:`Dünya mirası, insanlık için evrensel değere sahip olan kültürel ve doğal varlıkların tamamıdır. Bu varlıklar korunarak gelecek nesillere aktarılmalıdır. UNESCO tarafından belirlenen Dünya Mirası Listesi'nde yer alan eserler ve alanlar tüm insanlığın ortak mirası kabul edilir.`},
+    {q:`Liderlik nedir?`, a:`Liderlik, bir kişinin belirli hedeflere ulaşmak için insanları etkileyebilmesi, yönlendirebilmesi ve motive edebilmesidir. İyi bir lider; sorumluluk alır, doğru karar verir, ekip ruhunu geliştirir ve gerektiğinde örnek olur.`},
+    {q:`Farkındalık nedir?`, a:`Farkındalık, kişinin kendisinin, çevresinin ve yaşadığı olayların bilinçli şekilde farkında olmasıdır. Farkındalığı yüksek kişiler olayları daha doğru değerlendirir, sorunları daha erken fark eder ve daha sağlıklı kararlar verebilir.`},
+    {q:`Teknolojinin faydaları nelerdir?`, a:`Teknoloji; iletişim, eğitim, sağlık, ulaşım ve güvenlik gibi birçok alanda hayatı kolaylaştırmaktadır. Bilgiye hızlı erişim sağlar, üretkenliği artırır ve zamandan tasarruf edilmesine yardımcı olur. Ayrıca güvenlik alanında kamera sistemleri, yapay zekâ ve çeşitli teknolojik cihazlar sayesinde suçla mücadeleye katkı sağlar.`},
+    {q:`Coğrafi keşifler Avrupa'yı nasıl etkilemiştir?`, a:`Coğrafi keşifler sonucunda yeni ticaret yolları ve yeni kıtalar keşfedilmiştir. Avrupa devletleri zenginleşmiş, ticaret gelişmiş ve sömürgecilik faaliyetleri hız kazanmıştır. Ayrıca bilimsel düşünce ve Rönesans hareketleri de güç kazanmıştır.`},
+    {q:`Mustafa Kemal Atatürk'ün "Yurtta sulh, cihanda sulh." sözünü açıklayınız.`, a:`Atatürk'ün "Yurtta sulh, cihanda sulh" sözü; ülke içinde barış, huzur ve birlik sağlanmadan dış dünyada kalıcı barışın mümkün olmayacağını ifade eder. Bu söz, Türkiye'nin barışçı dış politikasının temel ilkelerinden biridir ve hem iç hem de dış ilişkilerde barışın önemini vurgular.`},
+    {q:`Balistik nedir?`, a:`Balistik, ateşli silahlardan çıkan mermilerin hareketlerini, silahları, mühimmatı ve atış izlerini inceleyen bilim dalıdır. Olay yeri incelemelerinde silah ile mermi arasındaki ilişkinin belirlenmesinde önemli rol oynar.`},
+    {q:`1876 yılında Osmanlı Devleti'nde ne olmuştur?`, a:`1876 yılında Osmanlı Devleti'nde I. Meşrutiyet ilan edilmiş ve Osmanlı Devleti'nin ilk anayasası olan Kanun-i Esasi yürürlüğe girmiştir. Böylece padişahın yanında meclis de yönetimde yer almaya başlamış ve anayasal yönetime geçiş süreci başlamıştır.`},
+    {q:`Amasya Genelgesi'nde yer alan "Milletin bağımsızlığını yine milletin azim ve kararı kurtaracaktır." sözü ne ifade etmektedir?`, a:`Bu söz, kurtuluş mücadelesinin milletin iradesiyle yürütüleceğini ve bağımsızlığın halkın kararlılığı sayesinde kazanılacağını ifade etmektedir. Milli egemenlik anlayışının temelini oluşturan önemli bir ifadedir.`},
+    {q:`Haberleşme hürriyeti nedir?`, a:`Haberleşme hürriyeti, kişilerin mektup, telefon, e-posta ve benzeri iletişim araçlarıyla serbestçe haberleşebilme hakkıdır. Bu hak Anayasa ile güvence altına alınmıştır. Kanunda belirtilen istisnai durumlar dışında haberleşmenin gizliliğine dokunulamaz.`},
+    {q:`Kapitülasyonların kaldırılması hakkında bilgi veriniz.`, a:`Kapitülasyonlar, yabancı devletlere Osmanlı Devleti tarafından tanınan ekonomik ve hukuki ayrıcalıklardı. Bu ayrıcalıklar Türkiye'nin ekonomik ve hukuki bağımsızlığını olumsuz etkiliyordu. Kapitülasyonlar, 24 Temmuz 1923 tarihinde imzalanan Lozan Barış Antlaşması ile tamamen kaldırılmıştır. Böylece Türkiye ekonomik ve hukuki bağımsızlığını güçlendirmiştir.`},
+    {q:`Vatansız kişi kime denir?`, a:`Vatansız kişi, hiçbir devlet tarafından vatandaş olarak kabul edilmeyen kişidir. Bu kişiler herhangi bir ülkenin vatandaşlığına sahip olmadıkları için bazı temel haklardan yararlanmakta zorluk yaşayabilirler. Uluslararası hukukta bu durum "apatrid" olarak adlandırılır.`},
+    {q:`Felsefenin dijitalleşme üzerindeki etkileri nelerdir?`, a:`Felsefe, dijitalleşmenin insan hayatına etkilerini sorgulamamıza yardımcı olur. Yapay zekâ, veri güvenliği, mahremiyet, etik ve insan hakları gibi konularda yol gösterici bir rol üstlenir. Dijital teknolojilerin doğru ve etik şekilde kullanılması konusunda farkındalık oluşturur.`},
+    {q:`Ülkemizin güvenliği açısından teknolojinin faydaları nelerdir?`, a:`Teknoloji; sınır güvenliği, savunma sanayisi, istihbarat faaliyetleri ve suçla mücadele alanlarında önemli katkılar sağlar. İHA, SİHA, güvenlik kameraları, haberleşme sistemleri ve yapay zekâ destekli uygulamalar sayesinde güvenlik güçleri daha hızlı ve etkili çalışabilmektedir.`},
+    {q:`"Her temas iz bırakır." sözünü adli açıdan açıklayınız.`, a:`"Her temas iz bırakır" ilkesi, Fransız kriminalist Edmond Locard tarafından ortaya konulan Locard Değişim Prensibi'ne dayanır. Bu ilkeye göre bir kişi olay yerine geldiğinde veya bir nesneyle temas ettiğinde mutlaka bir iz bırakır ya da olay yerinden bir iz alır. Parmak izi, saç teli, DNA, ayakkabı izi ve lif parçaları buna örnek olabilir.`},
+    {q:`Sosyal medyanın kurumlar üzerindeki etkileri nelerdir?`, a:`Sosyal medya kurumların vatandaşlarla daha hızlı iletişim kurmasını, duyurular yapmasını ve geri bildirim almasını sağlar. Ancak yanlış bilgi yayılması, itibar kaybı ve bilgi kirliliği gibi riskleri de beraberinde getirebilir. Bu nedenle kurumların sosyal medyayı doğru ve bilinçli kullanması önemlidir.`},
+    {q:`Türk Devletlerinde kurultayın önemi nedir?`, a:`Kurultay, eski Türk devletlerinde devlet işlerinin görüşüldüğü danışma meclisidir. Kağan önemli kararları alırken kurultaya danışırdı. Savaş, barış, devlet yönetimi ve veraset gibi konular burada görüşülürdü. Kurultay, Türk devlet geleneğinde ortak akla ve danışmaya verilen önemi göstermektedir.`},
+    {q:`Dijital ayak izi nedir?`, a:`Dijital ayak izi, bireylerin internet ortamında bıraktıkları veri ve izlerin tamamıdır. Sosyal medya paylaşımları, internet aramaları, yorumlar ve ziyaret edilen siteler dijital ayak izine örnek verilebilir. Bu bilgiler kişinin dijital kimliğinin oluşmasına katkı sağlar.`},
+    {q:`Atatürk döneminde ekonomiye neden önem verilmiştir? Atatürk kaç yaşında vefat etmiştir?`, a:`Atatürk, siyasi bağımsızlığın ekonomik bağımsızlıkla desteklenmesi gerektiğine inanıyordu. Bu nedenle sanayi, tarım, ulaşım ve ticaret alanlarında yatırımlar yapılmış, millî ekonomi güçlendirilmeye çalışılmıştır. Atatürk'e göre ekonomik açıdan güçlü olmayan bir devlet tam bağımsız olamaz. Mustafa Kemal Atatürk, 1881 yılında doğmuş ve 10 Kasım 1938 tarihinde 57 yaşında vefat etmiştir.`},
+    {q:`Unutulma hakkı nedir?`, a:`Unutulma hakkı, kişilerin geçmişteki bazı kişisel verilerinin veya internet içeriklerinin belirli şartlar altında kaldırılmasını isteme hakkıdır. Bu hak, kişisel verilerin korunması ve özel hayatın gizliliği açısından önem taşımaktadır.`},
+    {q:`Dezenformasyon nedir?`, a:`Dezenformasyon, insanları yanıltmak amacıyla kasıtlı olarak üretilen veya yayılan yanlış bilgidir. Özellikle sosyal medya ve dijital platformlarda toplum üzerinde olumsuz etkiler oluşturabilir. Bu nedenle doğru bilgi kaynaklarının kullanılması önemlidir.`},
+    {q:`Lozan Antlaşması'nın önemi nedir?`, a:`Lozan Barış Antlaşması, Türk Kurtuluş Savaşı'nın ardından 24 Temmuz 1923 tarihinde imzalanmıştır. Bu antlaşma ile Türkiye Cumhuriyeti'nin bağımsızlığı ve egemenliği uluslararası alanda kabul edilmiştir. Lozan Antlaşması sayesinde Türkiye'nin bugünkü sınırlarının büyük bölümü belirlenmiş, kapitülasyonlar kaldırılmış ve yabancı devletlerin Türkiye üzerindeki ayrıcalıkları sona erdirilmiştir. Ayrıca Osmanlı Devleti'nin hukuken sona erdiği ve yeni Türk Devleti'nin uluslararası alanda tanındığı antlaşma olmuştur. Bu nedenle Lozan, Türkiye Cumhuriyeti'nin kuruluşunu ve bağımsızlığını güvence altına alan en önemli diplomatik başarılarından biri olarak kabul edilir.`},
+    {q:`Hukuk devleti nedir?`, a:`Hukuk devleti, tüm kişi ve kurumların hukuk kurallarına bağlı olduğu devlettir. Hukuk devletinde devletin işlemleri yargı denetimine açıktır ve temel hak ve özgürlükler güvence altındadır. Hiç kimse kanunların üstünde değildir.`},
+    {q:`Etkili iletişim neden önemlidir?`, a:`Etkili iletişim, insanların birbirlerini doğru anlamasını sağlar ve yanlış anlaşılmaları önler. İş hayatında verimliliği artırır, toplumsal ilişkileri güçlendirir ve sorunların daha kolay çözülmesine yardımcı olur. Polislik mesleğinde ise vatandaşla güven ilişkisi kurulmasını sağlar.`},
+    {q:`1908 yılında ilan edilen II. Meşrutiyet'in önemi nedir?`, a:`⚠️ Kaynak PDF'te bu sorunun cevabı hatalı girilmiş (33. sorunun cevabıyla aynı basılmış). Lütfen doğru cevabı admin panelinden düzenle. (İpucu: II. Meşrutiyet, 1908'de İttihat ve Terakki önderliğinde Kanun-i Esasi'nin yeniden yürürlüğe girmesiyle ilan edilmiş, meclis yeniden açılmış ve çok partili siyasi hayata geçiş süreci başlamıştır.)`},
+    {q:`Vatandaşlık ödevleri nelerdir?`, a:`Vatandaşların devlete ve topluma karşı yerine getirmesi gereken bazı görevleri vardır. Bunlar arasında kanunlara uymak, vergi vermek, askerlik yapmak, oy kullanmak ve kamu düzenine katkı sağlamak yer alır. Vatandaşlık ödevleri, toplum düzeninin korunması açısından önemlidir.`},
+    {q:`İklimin beşerî faaliyetler üzerindeki etkileri nelerdir?`, a:`İklim; tarım, hayvancılık, ulaşım, yerleşme, turizm ve ekonomik faaliyetleri doğrudan etkiler. İnsanlar yaşadıkları bölgenin iklim şartlarına göre evlerini, üretim faaliyetlerini ve yaşam biçimlerini şekillendirirler. Örneğin tarım ürünleri bölgenin iklimine göre değişiklik gösterir.`},
+    {q:`Kadın cinayetleri nasıl önlenebilir?`, a:`Kadın cinayetlerinin önlenmesi için eğitim, farkındalık çalışmaları ve hukuki yaptırımların etkin uygulanması önemlidir. Aile içi şiddetin erken tespit edilmesi, mağdurların korunması, sosyal destek mekanizmalarının güçlendirilmesi ve toplumda şiddete karşı bilinç oluşturulması gerekmektedir.`},
+    {q:`Hollanda'nın üç şehrini sayınız.`, a:`Amsterdam, Rotterdam, Lahey.`},
+    {q:`Çanakkale Cephesi'nin dünya genelindeki sonuçları nelerdir?`, a:`Çanakkale Cephesi, I. Dünya Savaşı'nın en önemli cephelerinden biridir. İtilaf Devletleri boğazları geçememiş ve önemli kayıplar vermiştir. Bu zafer Osmanlı Devleti'nin savaş süresini uzatmış, Türk milletinin moralini yükseltmiş ve Mustafa Kemal'in tanınmasını sağlamıştır. Ayrıca Rusya'ya yardım ulaştırılamaması Rusya'daki iç karışıklıkları artıran etkenlerden biri olmuştur.`},
+    {q:`Sabiha Gökçen'in önemi nedir? Hakkında bilgi veriniz.`, a:`Sabiha Gökçen, Mustafa Kemal Atatürk'ün manevi kızlarından biridir. Dünyanın ilk kadın savaş pilotlarından biri, Türkiye'nin ise ilk kadın savaş pilotudur. Türk havacılığının gelişmesine önemli katkılar sağlamış ve kadınların birçok alanda başarılı olabileceğini göstermiştir.`},
+    {q:`Yeşil Vatan kavramının sanayi ile ilişkisi nedir?`, a:`Yeşil Vatan, ormanlarımızı ve doğal çevremizi koruma anlayışını ifade eden bir kavramdır. Sanayi faaliyetleri ekonomik kalkınma açısından önemlidir ancak çevreye zarar vermeden yürütülmelidir. Sürdürülebilir sanayi uygulamaları, çevre dostu teknolojiler ve emisyonların azaltılması Yeşil Vatan'ın korunmasına katkı sağlar.`},
+    {q:`Toplumsal olaylar nelerdir?`, a:`Toplumsal olaylar, toplumun tamamını veya bir bölümünü etkileyen sosyal gelişmelerdir. Göç, eğitim, işsizlik, kentleşme, doğal afetler, ekonomik krizler, seçimler ve toplumsal dayanışma faaliyetleri toplumsal olaylara örnek olarak verilebilir.`},
+    {q:`Hak ve özgürlük nedir?`, a:`⚠️ Kaynak PDF'te bu sorunun cevabı hatalı girilmiş (42. sorunun cevabıyla aynı basılmış). Lütfen doğru cevabı admin panelinden düzenle. (İpucu: Hak, kişiye hukuk tarafından tanınan ve korunan menfaattir; özgürlük ise kişinin başkalarına zarar vermeden istediği gibi davranabilme imkânıdır.)`},
+    {q:`Millî hâkimiyet nedir?`, a:`Millî hâkimiyet, egemenliğin millete ait olmasıdır. Devlet yönetiminde son sözün millete ait olduğunu ifade eder. Türkiye Cumhuriyeti'nin temel ilkelerinden biridir ve "Egemenlik kayıtsız şartsız milletindir." sözü millî hâkimiyet anlayışını en iyi şekilde açıklar.`},
+    {q:`Osmanlı'da alınan aşar (öşür) vergisini açıklayınız.`, a:`Aşar veya öşür vergisi, Osmanlı Devleti'nde tarımsal ürünlerden alınan bir vergidir. Çiftçilerin elde ettiği ürünün genellikle onda biri devlet tarafından vergi olarak alınırdı. Bu vergi devletin önemli gelir kaynaklarından biriydi.`},
+    {q:`Toplumun gelişmesi için gençlere ne gibi destekler verilmelidir?`, a:`Toplumun gelişmesi için gençlere kaliteli eğitim imkânları sunulmalı, spor, sanat ve bilim faaliyetlerine katılımları desteklenmelidir. Ayrıca istihdam olanakları artırılmalı, girişimcilik teşvik edilmeli ve gençlerin karar alma süreçlerine katılımı sağlanmalıdır.`},
+    {q:`Sosyal medyanın toplum üzerindeki olumlu ve olumsuz etkileri nelerdir?`, a:`Sosyal medya bilgiye hızlı erişim, iletişim ve haberleşme açısından önemli avantajlar sağlar. Ancak yanlış bilgi yayılması, bağımlılık, mahremiyet ihlalleri ve kutuplaşma gibi olumsuz etkileri de bulunmaktadır. Bu nedenle bilinçli kullanılması gerekir.`},
+    {q:`İş yerinde motivasyonun önemi nedir?`, a:`Motivasyon, çalışanların işlerini daha verimli ve istekli yapmalarını sağlar. Motivasyonu yüksek çalışanlar daha üretken olur, iş kalitesi artar ve kurumun hedeflerine ulaşması kolaylaşır. Ayrıca iş yerindeki uyum ve memnuniyet de güçlenir.`},
+    {q:`Özgürlük ve bağımsızlık arasındaki ilişkiyi açıklayınız.`, a:`Özgürlük, bireyin haklarını kullanabilmesi ve düşüncelerini serbestçe ifade edebilmesidir. Bağımsızlık ise bir devletin başka devletlerin etkisi altında kalmadan kendi kararlarını verebilmesidir. Bağımsız bir devlet, vatandaşlarının özgürlüklerini daha güvenli şekilde koruyabilir. Bu nedenle özgürlük ve bağımsızlık birbirini tamamlayan kavramlardır.`},
+    {q:`Önyargı nedir?`, a:`Önyargı, bir kişi, grup veya olay hakkında yeterli bilgiye sahip olmadan önceden olumlu ya da olumsuz kanaat oluşturmaktır. Önyargılar yanlış değerlendirmelere ve toplumsal ayrışmalara neden olabilir. Bu nedenle insanları ve olayları objektif şekilde değerlendirmek önemlidir.`},
+    {q:`Birleşmiş Milletler nedir?`, a:`Birleşmiş Milletler (BM), uluslararası barışı ve güvenliği korumak, ülkeler arasında iş birliğini geliştirmek ve insan haklarını desteklemek amacıyla 1945 yılında kurulmuş uluslararası bir örgüttür. Merkezi New York'tadır.`},
+    {q:`Kara para nedir?`, a:`Kara para, yasa dışı faaliyetlerden elde edilen gelirlerdir. Uyuşturucu ticareti, kaçakçılık, dolandırıcılık ve benzeri suçlardan elde edilen kazançlar kara para olarak değerlendirilir. Bu paraların yasal kaynaklardan elde edilmiş gibi gösterilmesine ise kara para aklama denir.`},
+    {q:`Ulusal birlik nedir? Açıklayınız.`, a:`Ulusal birlik, bir milletin ortak değerler, ortak hedefler ve vatan sevgisi etrafında kenetlenmesidir. Toplumun dayanışma içinde olması, ülkenin huzuru, güvenliği ve gelişimi açısından büyük önem taşır.`},
+    {q:`Kriminoloji nedir?`, a:`Kriminoloji, suçun nedenlerini, suçluların davranışlarını, suçun toplum üzerindeki etkilerini ve suçla mücadele yöntemlerini inceleyen bilim dalıdır. Kriminoloji; hukuk, psikoloji, sosyoloji ve diğer sosyal bilimlerden yararlanır.`},
+    {q:`Halkçılık ilkesinin milletimize etkileri nelerdir?`, a:`Halkçılık, Atatürk'ün temel ilkelerinden biridir. Bu ilkeye göre tüm vatandaşlar kanun önünde eşittir ve hiçbir kişiye veya zümreye ayrıcalık tanınamaz. Halkçılık, toplumsal dayanışmayı güçlendirmiş, vatandaşlar arasında eşitlik anlayışını geliştirmiş ve demokratik yaşamın güçlenmesine katkı sağlamıştır.`},
+    {q:`Bomba imha ekiplerinin özellikleri ve görevleri nelerdir?`, a:`Bomba imha ekipleri, patlayıcı maddelerin tespit edilmesi, etkisiz hâle getirilmesi ve patlama riskinin önlenmesi amacıyla görev yapan uzman ekiplerdir. Bu ekipler özel eğitim alır, yüksek dikkat ve soğukkanlılıkla çalışır. Şüpheli paket, bomba ihbarı ve patlayıcı madde olaylarında görev alırlar.`},
+    {q:`Genel kültür kamu görevlileri için neden önemlidir?`, a:`Kamu görevlileri toplumun farklı kesimleriyle iletişim kurar ve çeşitli konularda karar alma süreçlerinde görev alırlar. Genel kültür, olayları daha doğru değerlendirmeyi, vatandaşlarla sağlıklı iletişim kurmayı ve mesleki yeterliliği artırmayı sağlar. Özellikle polislik gibi toplumla iç içe olan mesleklerde genel kültür büyük önem taşır.`},
+    {q:`Polis ve jandarmanın benzerlikleri nelerdir?`, a:`Polis ve jandarma, Türkiye'nin genel kolluk kuvvetleridir. Her iki kurum da kamu düzenini sağlamak, suçları önlemek, suçluları yakalamak, vatandaşların can ve mal güvenliğini korumakla görevlidir. Her ikisi de kanunların verdiği yetkiler çerçevesinde görev yapar ve devletin güvenlik hizmetlerini yerine getirir. Her iki kolluk kuvveti de İçişleri Bakanlığı'na bağlıdır.`},
+    {q:`Değer kavramı nedir?`, a:`Değer, bireylerin ve toplumların önemli, doğru ve gerekli kabul ettiği inanç ve ilkelerdir. Saygı, dürüstlük, adalet, sorumluluk ve yardımseverlik gibi kavramlar toplumsal değerlere örnek olarak gösterilebilir. Değerler, bireylerin davranışlarını yönlendirir ve toplumsal düzenin korunmasına katkı sağlar.`},
+    {q:`İzoterm nedir?`, a:`İzoterm, haritalarda aynı sıcaklık değerine sahip noktaları birleştiren eğrilere verilen isimdir. İklim ve sıcaklık dağılışını incelemek amacıyla kullanılır.`},
+    {q:`Konut dokunulmazlığı nedir?`, a:`Konut dokunulmazlığı, kişilerin yaşadıkları konutlara hukuka aykırı şekilde girilememesi ve konutlarında rahatsız edilememesi hakkıdır. Bu hak Anayasa ile güvence altına alınmıştır. Kanunda belirtilen istisnai durumlar dışında kimsenin konutuna izinsiz girilemez.`},
+    {q:`Mutlak butlan nedir?`, a:`Mutlak butlan, bir hukuki işlemin kanunun emredici hükümlerine, ahlaka, kamu düzenine veya kişilik haklarına aykırı olması nedeniyle baştan itibaren kesin olarak geçersiz sayılmasıdır. Böyle bir işlem hukuk dünyasında hiç doğmamış kabul edilir.`},
+    {q:`Atatürk'ün Cumhuriyetçilik ilkesini açıklayınız.`, a:`Cumhuriyetçilik, egemenliğin millete ait olması ve devlet yönetiminde millet iradesinin esas alınmasıdır. Cumhuriyetçilik ilkesine göre yöneticiler seçimle iş başına gelir ve halk yönetime katılır. Bu ilke demokrasinin temelini oluşturur.`},
+    {q:`Ulusal güvenlik nedir?`, a:`Ulusal güvenlik, devletin varlığının, bağımsızlığının, anayasal düzeninin ve milletin huzurunun iç ve dış tehditlere karşı korunmasıdır. Askerî, ekonomik, siyasi, teknolojik ve sosyal unsurları kapsayan geniş bir kavramdır.`},
+    {q:`Kriminolojinin suç olaylarını açıklamada ve incelemede kullandığı etkenler nelerdir?`, a:`Kriminoloji, suç olaylarını açıklarken bireysel, sosyal, ekonomik ve çevresel faktörleri inceler. Eğitim düzeyi, aile yapısı, ekonomik koşullar, çevre, psikolojik etkenler ve toplumsal yapı suçun oluşumunda etkili olabilecek unsurlar arasında yer alır.`},
+    {q:`Yönetişim nedir?`, a:`Yönetişim, devletin, özel sektörün ve sivil toplum kuruluşlarının birlikte hareket ederek karar alma ve uygulama süreçlerine katılmasıdır. Amaç; katılımcılığı, şeffaflığı, hesap verebilirliği ve etkin yönetimi sağlamaktır.`},
+    {q:`Diplomasi nedir?`, a:`Diplomasi, devletlerin ve uluslararası aktörlerin aralarındaki ilişkileri barışçıl yollarla yürütme, sorunları müzakere yoluyla çözme ve iş birliğini geliştirme faaliyetidir. Diplomasi sayesinde ülkeler savaş yerine diyalog ve görüşme yoluyla anlaşmazlıklarını çözmeye çalışırlar.`},
+    {q:`Mahallî idareleri sayınız.`, a:`Türkiye'deki mahallî idareler; Belediyeler, İl Özel İdareleri ve Köy İdareleri olmak üzere üç grupta incelenir.`},
+    {q:`Doğal afet nedir?`, a:`Doğal afet, doğa olayları sonucunda meydana gelen ve insanların can, mal ve çevre üzerinde olumsuz etkiler oluşturan olaylardır. Deprem, sel, heyelan, çığ, kuraklık ve orman yangınları doğal afetlere örnek olarak verilebilir.`},
+    {q:`Kolluk kuvvetlerinin olağanüstü durumlarda görevleri nelerdir?`, a:`Kolluk kuvvetleri olağanüstü durumlarda kamu düzenini sağlamak, vatandaşların can ve mal güvenliğini korumak, arama-kurtarma çalışmalarına destek vermek, tahliye ve güvenlik tedbirlerini uygulamak, yardım faaliyetlerinin düzenli yürütülmesine katkı sağlamakla görevlidir. Ayrıca kriz anlarında halkın güvenliğini ve asayişi korumak için gerekli önlemleri alırlar.`},
+    {q:`NATO'nun açılımı nedir? NATO üyesi 5 ülke sayınız.`, a:`NATO'nun açılımı "North Atlantic Treaty Organization", Türkçe adıyla "Kuzey Atlantik Antlaşması Örgütü"dür. NATO, üye ülkelerin ortak savunmasını sağlamak amacıyla 1949 yılında kurulmuştur. NATO üyesi ülkelere örnek olarak: Türkiye, Amerika Birleşik Devletleri, Birleşik Krallık, Fransa, Almanya sayılabilir.`},
+    {q:`Osmanlı Devleti'nin Yükselme Dönemi hakkında bilgi veriniz.`, a:`Osmanlı Devleti'nin Yükselme Dönemi, İstanbul'un Fethi'nden sonra başlayıp Kanuni Sultan Süleyman'ın ölümüne kadar devam eden dönem olarak kabul edilir. Bu dönemde Osmanlı Devleti hem topraklarını genişletmiş hem de siyasi, askerî ve ekonomik açıdan dünyanın en güçlü devletlerinden biri hâline gelmiştir. Fatih Sultan Mehmet döneminde İstanbul fethedilmiş ve Bizans Devleti sona ermiştir. Yavuz Sultan Selim döneminde Mısır fethedilmiş, halifelik Osmanlı Devleti'ne geçmiştir. Kanuni Sultan Süleyman döneminde ise Osmanlı Devleti en geniş sınırlarına ulaşmış ve hukuk alanında önemli düzenlemeler yapılmıştır. Bu dönemde Osmanlı Devleti Avrupa, Asya ve Afrika'da geniş topraklara sahip olmuş, denizlerde de önemli bir güç hâline gelmiştir.`},
+    {q:`Bilgi edinme hakkı nedir?`, a:`Bilgi edinme hakkı, vatandaşların kamu kurum ve kuruluşlarından bilgi ve belge talep edebilmesini sağlayan temel bir haktır. Bu hak, şeffaf yönetim anlayışını güçlendirir ve kamu kurumlarının denetlenmesine katkı sağlar. Türkiye'de bu hak 4982 sayılı Bilgi Edinme Hakkı Kanunu ile düzenlenmiştir.`},
+    {q:`Bir kamu görevlisi görevini veya yetkisini kötüye kullanırsa ne gibi sonuçlarla karşılaşabilir?`, a:`Kamu görevlileri görevlerini kanunlara uygun, tarafsız ve dürüst şekilde yerine getirmek zorundadır. Görev veya yetkinin kötüye kullanılması durumunda disiplin, idari ve ceza yaptırımlarıyla karşılaşılabilir. Ayrıca bu durum kamu hizmetlerine olan güveni zedeler ve vatandaşların mağduriyetine neden olabilir.`},
+    {q:`Küreselleşmenin toplumlar üzerindeki etkileri nelerdir?`, a:`Küreselleşme, ülkeler arasındaki ekonomik, kültürel ve teknolojik etkileşimin artmasıdır. Bilgiye erişimi kolaylaştırır, ticareti ve iletişimi geliştirir. Ancak kültürel benzeşme, ekonomik bağımlılık ve bazı yerel değerlerin zayıflaması gibi olumsuz sonuçlar da doğurabilir.`},
+    {q:`Stresi nasıl yönetirsiniz?`, a:`Stresle başa çıkmak için öncelikle sorunun kaynağını doğru tespit etmeye çalışırım. Planlı hareket etmek, zamanı iyi yönetmek, düzenli spor yapmak ve gerektiğinde çevremdeki kişilerden destek almak stresin azaltılmasına yardımcı olur. Özellikle soğukkanlı kalmaya ve çözüm odaklı düşünmeye önem veririm.`},
+    {q:`Fiil ehliyeti olmayan veya sınırlı fiil ehliyetine sahip kişilerin borçlanma sorumluluğu hakkında bilgi veriniz.`, a:`Fiil ehliyeti, kişinin kendi işlemleriyle hak kazanabilmesi ve borç altına girebilmesidir. Fiil ehliyeti olmayan kişiler (örneğin küçük çocuklar veya ayırt etme gücü bulunmayan kişiler) kural olarak kendi işlemleriyle borç altına giremezler. Sınırlı fiil ehliyetine sahip kişiler ise bazı işlemleri yasal temsilcilerinin izni veya onayı ile yapabilirler.`},
+    {q:`Türkiye, 2002 FIFA Dünya Kupası'nı kaçıncı sırada tamamlamıştır?`, a:`Türkiye, 2002 FIFA Dünya Kupası'nı üçüncü sırada tamamlamıştır. Turnuvada Güney Kore'yi 3-2 yenerek dünya üçüncüsü olmuştur.`},
+    {q:`Birleşmiş Milletlerin üye sayısı kaçtır?`, a:`Birleşmiş Milletlerin günümüzde 193 üye devleti bulunmaktadır. Türkiye de Birleşmiş Milletlerin kurucu üyelerinden biridir.`},
+    {q:`Aile kavramının kamu kurumları ve toplum açısından önemi nedir?`, a:`Aile, toplumun temel yapı taşıdır. Bireylerin ilk eğitimini aldığı, değerleri öğrendiği ve kişilik gelişimini tamamladığı yerdir. Güçlü aile yapısı, toplumsal dayanışmayı ve huzuru artırır. Kamu kurumları açısından ise sağlıklı aile yapısı; eğitim, güvenlik ve sosyal hizmetler alanında olumlu sonuçlar doğurur.`},
+    {q:`Küresel ısınma nedir?`, a:`Küresel ısınma, atmosferdeki sera gazlarının artması sonucu dünya ortalama sıcaklığının yükselmesidir. Bu durum iklim değişikliğine, kuraklığa, sel ve aşırı hava olaylarına neden olabilmektedir. İnsan faaliyetleri küresel ısınmanın başlıca sebepleri arasında yer almaktadır.`},
+    {q:`Ahilik teşkilatı nedir?`, a:`Ahilik Teşkilatı, Anadolu'da esnaf ve sanatkârlar arasında dayanışmayı sağlamak amacıyla kurulmuş meslek örgütüdür. Kurucusu olarak Ahi Evran kabul edilir. Ahilik; dürüstlük, kaliteli üretim, yardımlaşma ve meslek ahlakını esas almıştır.`},
+  ];
+
+  await loadDB(true);
+  let added = 0;
+  items.forEach(item=>{
+    const exists = db.classicalQuestions.some(q => q.question === item.q);
+    if(!exists){
+      db.classicalQuestions.push({ question: item.q, answer: item.a });
+      added++;
+    }
+  });
+  const ok = await saveDB();
+  if(ok){
+    classicalQuestions = db.classicalQuestions;
+    renderAdminClassicalList();
+    toast(added + ' soru eklendi');
+    btn.textContent = 'Tamamlandı ✓';
+  } else {
+    btn.textContent = '33. Dönem POMEM Sorularını Toplu Ekle (82 soru)';
+    btn.style.pointerEvents = 'auto';
+  }
 }
 
 async function addClassicalQuestion(){
