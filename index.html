@@ -484,7 +484,7 @@
       <div class="field"><label>Soru</label><textarea id="acQuestion" placeholder="Soru metni..."></textarea></div>
       <div class="field"><label>Cevap</label><textarea id="acAnswer" placeholder="Cevap metni..."></textarea></div>
       <button class="btn btn-gold" style="margin-top:14px" onclick="addClassicalQuestion()">Soruyu Ekle</button>
-      <button class="btn btn-outline" style="margin-top:10px" id="bulkImportBtn" onclick="bulkImportPomem33()">33. Dönem POMEM Sorularını Toplu Ekle (82 soru)</button>
+      <button class="btn btn-outline" style="margin-top:10px" id="bulkImportBtn" onclick="bulkImportPomem33()">32-33. Dönem POMEM Sorularını Toplu Ekle (103 soru)</button>
       <h4 class="section-title">Mevcut Klasik Sorular (<span id="acCount">0</span>)</h4>
       <div id="acList"></div>
     </div>
@@ -1177,6 +1177,27 @@ async function bulkImportPomem33(){
     {q:`Aile kavramının kamu kurumları ve toplum açısından önemi nedir?`, a:`Aile, toplumun temel yapı taşıdır. Bireylerin ilk eğitimini aldığı, değerleri öğrendiği ve kişilik gelişimini tamamladığı yerdir. Güçlü aile yapısı, toplumsal dayanışmayı ve huzuru artırır. Kamu kurumları açısından ise sağlıklı aile yapısı; eğitim, güvenlik ve sosyal hizmetler alanında olumlu sonuçlar doğurur.`},
     {q:`Küresel ısınma nedir?`, a:`Küresel ısınma, atmosferdeki sera gazlarının artması sonucu dünya ortalama sıcaklığının yükselmesidir. Bu durum iklim değişikliğine, kuraklığa, sel ve aşırı hava olaylarına neden olabilmektedir. İnsan faaliyetleri küresel ısınmanın başlıca sebepleri arasında yer almaktadır.`},
     {q:`Ahilik teşkilatı nedir?`, a:`Ahilik Teşkilatı, Anadolu'da esnaf ve sanatkârlar arasında dayanışmayı sağlamak amacıyla kurulmuş meslek örgütüdür. Kurucusu olarak Ahi Evran kabul edilir. Ahilik; dürüstlük, kaliteli üretim, yardımlaşma ve meslek ahlakını esas almıştır.`},
+    {q:`Hukuk nedir?`, a:`Hukuk, toplum düzenini sağlamak, bireylerin haklarını korumak ve adaleti tesis etmek için oluşturulan yazılı ve yazısız kurallar bütünüdür. Devletin yaptırım gücüyle desteklenir.`},
+    {q:`Avrupa güvenlik mimarisi yeniden şekillendirilecekse bu, Türkiye olmadan mümkün değil sözüyle Dışişleri bakanı ne demek istemiştir?`, a:`Bu sözle Türkiye'nin coğrafi konumu, askeri gücü, NATO üyeliği ve bölgesel etkisi vurgulanmıştır. Avrupa'nın güvenliği yeniden planlanacaksa, Türkiye'nin stratejik rolü göz ardı edilemez demek istenmiştir.`},
+    {q:`Polis memurunda olması gereken özellikler nelerdir?`, a:`Polis memuru; dürüst, disiplinli, sabırlı, soğukkanlı, iletişim becerileri yüksek, sorumluluk sahibi ve fiziki yeterliliğe sahip olmalıdır. Ayrıca stres altında doğru karar verme yeteneği de önemlidir.`},
+    {q:`Kriz anında polislerin liderlik özellikleri neden önemlidir?`, a:`Kriz anında liderlik, ekiplerin yönlendirilmesi, halkın güvenliğinin sağlanması ve panik ortamının önlenmesi açısından kritiktir. Liderlik vasfı olan polisler, hızlı ve etkili müdahale ile olayları kontrol altına alabilir.`},
+    {q:`Terörsüz Türkiye ideali nedir?`, a:`Terörsüz Türkiye ideali; halkın can güvenliğinin sağlandığı, terör örgütlerinin faaliyet göstermediği, huzur ve barış ortamının tesis edildiği bir Türkiye hedefidir.`},
+    {q:`Eşitlik nedir?`, a:`Eşitlik, bireylerin hak, özgürlük ve fırsatlar bakımından ayrım gözetmeksizin aynı şartlara sahip olmasıdır. Hukukta, toplumsal yaşamda ve çalışma hayatında temel bir ilkedir.`},
+    {q:`Ping pong diplomasisi nedir?`, a:`1970'lerde Çin ile ABD arasındaki diplomatik ilişkilerin geliştirilmesinde masa tenisi (ping pong) maçlarının kullanılmasıdır. Spor aracılığıyla siyasi yakınlaşma sağlanmıştır.`},
+    {q:`Pozitif paylaşımcılık nedir?`, a:`Pozitif paylaşımcılık, bireylerin bilgi, duygu veya kaynaklarını iyi niyetle, destekleyici bir şekilde çevresiyle paylaşmasıdır. İşbirliği ve toplumsal uyumu artırır.`},
+    {q:`Pi sayısı nedir, kim buldu?`, a:`Pi sayısı, bir çemberin çevresinin çapına oranıdır ve yaklaşık değeri 3,14'tür. Kesin değeri irrasyoneldir. İlk olarak Antik Mısır ve Babil'de kullanılmış, Arşimet pi'nin hesaplamasında öncüdür.`},
+    {q:`Adli birimler nelerdir?`, a:`Adli birimler; suçların araştırılması ve yargılanmasında görev alan kurumlardır. Başlıcaları: adliyeler, savcılıklar, mahkemeler, adli tıp kurumları, kriminal laboratuvarlar ve kolluk kuvvetlerinin adli birimleridir.`},
+    {q:`Sürdürülebilir turizm nedir?`, a:`Sürdürülebilir turizm; doğal kaynaklara zarar vermeden, yerel kültürü koruyarak ve gelecek nesillerin de faydalanabileceği şekilde turizmi sürdüren anlayıştır.`},
+    {q:`Sanat ve bilim arasındaki ilişki nedir?`, a:`Sanat, duyguların ve estetiğin ifadesidir; bilim ise akıl ve gözlem temellidir. Ancak her ikisi de yaratıcılık, merak ve keşif gerektirir. Birçok bilimsel gelişme sanatsal düşünceyle desteklenirken, sanat da bilimsel tekniklerden yararlanır.`},
+    {q:`Bilgiye ulaşmak bu kadar kolayken, doğru bilgiye ulaşmak neden hala zor. Yorumlayınız.`, a:`Çünkü bilgi kirliliği, manipülasyon, doğrulanmamış kaynaklar ve sosyal medyanın etkisi nedeniyle yanlış bilgiler de çok hızlı yayılmaktadır. Bu da doğru olanı ayırt etmeyi zorlaştırır. Eleştirel düşünme ve kaynak sorgulama bu yüzden önemlidir.`},
+    {q:`İhmal nedir? İhmal suç mudur? Sonuçları hakkında tartışınız.`, a:`İhmal, bir kişinin sorumluluğu altındaki bir görevi bilerek veya dikkatsizlik sonucu yerine getirmemesidir. Bazı durumlarda ihmal, suç sayılır. Özellikle ihmali davranışla ölüme veya yaralanmaya neden olunduğunda cezai sorumluluk doğar. Sonuçları ciddi olabilir: can kaybı, zarar, toplumsal güven kaybı gibi etkiler yaratabilir.`},
+    {q:`Polis haftası hangi ayda ve hangi hafta kutlanır?`, a:`Polis Haftası, her yıl Nisan ayının 10. gününü kapsayan hafta boyunca kutlanır. 10 Nisan, Türk Polis Teşkilatı'nın kuruluş yıl dönümüdür. Türk Polis Teşkilatı, 10 Nisan 1845 tarihinde "Asâkir-i Zaptiye Nizâmnâmesi" ile kurulmuştur.`},
+    {q:`"Sahipsiz vatanın batması haktır. Sen sahip çıkarsan bu vatan batmayacaktır." Mehmet Akif Ersoy sözünü açıkla.`, a:`Bu söz, vatanın ancak halkı tarafından korunursa ayakta kalabileceğini vurgular. Bir millet, kendi yurduna sahip çıkmazsa düşmanlar kolayca ele geçirebilir. Ama bilinçli, fedakâr ve duyarlı vatandaşlar sayesinde vatan daima güçlü kalır.`},
+    {q:`Demokrasi olmayan yerde suçluluk oranı neden yüksektir açıklayınız.`, a:`Demokrasi olmayan yerlerde hukukun üstünlüğü zayıflar, adalet sistemi işlemez, haklar güvence altında değildir. Bu durum toplumsal huzursuzluğa, yolsuzluğa ve suç artışına neden olur. Ayrıca ifade özgürlüğü kısıtlandıkça bireylerin adalet arama yolları da daralır.`},
+    {q:`Dinleyicide olması gereken özellikler nelerdir?`, a:`İyi bir dinleyici dikkatini vererek dinler, söz kesmez, empati kurar, anlamaya odaklanır, göz teması kurar ve beden diliyle ilgisini gösterir. Bu özellikler sağlıklı iletişim için önemlidir.`},
+    {q:`Sosyal adalet nedir?`, a:`Sosyal adalet, toplumda herkesin haklara, fırsatlara ve kaynaklara eşit şekilde erişmesini sağlayan bir ilkedir. Gelir dağılımı, eğitim, sağlık ve hukuki haklarda adil bir denge kurmayı hedefler.`},
+    {q:`I. meclis ve II. meclis arasındaki fark nedir?`, a:`I. Meclis (1920-1923): Kurtuluş Savaşı döneminde kurulmuştur, üyeleri halk tarafından değil, iller tarafından seçilen temsilcilerden oluşur. Parti yoktur. II. Meclis (1923 sonrası): Cumhuriyet ilan edildikten sonra yapılan seçimlerle oluşmuştur. Siyasal partiler devreye girmiştir. Meclis daha düzenli ve anayasal çerçevede çalışmaya başlamıştır.`},
+    {q:`Sekülerizm nedir?`, a:`Sekülerizm, din ve devlet işlerinin birbirinden ayrılmasını savunan anlayıştır. Devletin dini değil, hukuki kurallara göre yönetilmesini ve her dine eşit mesafede durmasını öngörür.`},
   ];
 
   await loadDB(true);
@@ -1195,7 +1216,7 @@ async function bulkImportPomem33(){
     toast(added + ' soru eklendi');
     btn.textContent = 'Tamamlandı ✓';
   } else {
-    btn.textContent = '33. Dönem POMEM Sorularını Toplu Ekle (82 soru)';
+    btn.textContent = '32-33. Dönem POMEM Sorularını Toplu Ekle (103 soru)';
     btn.style.pointerEvents = 'auto';
   }
 }
